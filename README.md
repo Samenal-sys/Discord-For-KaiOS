@@ -1,5 +1,5 @@
-# Discord for KaiOS (U-Edition)
-Discord for KaiOS upgraded Edition is a discord client for KaiOS with as many features as possible, if you ever notice a missing feature please reach on discord
+# Discord for KaiOS (Fork)
+Discord for KaiOS (Fork) is a discord client for KaiOS with as many features as possible, if you ever notice a missing feature please reach on discord
 
 
 
