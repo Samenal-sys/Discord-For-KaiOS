@@ -1,6 +1,34 @@
 import { DiscordUser, DiscordGuild, DiscordServerProfile } from "discord";
 import { decimal2rgb, useStore } from "../../lib/utils";
 import { Show } from "solid-js";
+import * as styles from "./UserLabel.module.scss";
+
+const userLabelStyles = styles as unknown as {
+	serverTag: string;
+	serverTagBadge: string;
+	roleIcon: string;
+};
+
+function UserLabelServerTag(props: { $: DiscordUser }) {
+	const clan = useStore(() => props.$, "clan");
+
+	return (
+		<Show when={clan()?.identity_enabled && clan()?.tag}>
+			{(tag) => (
+					<span class={userLabelStyles.serverTag} title={`Server Tag: ${tag()}`}>
+					<Show when={clan()?.badge}>
+						<img
+								class={userLabelStyles.serverTagBadge}
+							src={`https://cdn.discordapp.com/clan-badges/${clan()!.identity_guild_id}/${clan()!.badge}.png?size=16`}
+							alt=""
+						/>
+					</Show>
+					{tag()}
+				</span>
+			)}
+		</Show>
+	);
+}
 
 function UserLabelNicknameProfile(props: {
 	$: DiscordUser;
@@ -20,11 +48,24 @@ function UserLabelNicknameProfile(props: {
 		return guild_roles()
 			.toSorted((a, b) => b.position - a.position)
 			.find((a) => {
-				return _roles.includes(a.id) && a.color !== 0;
+				const colors = (a as any).colors;
+				return _roles.includes(a.id) && (a.color !== 0 || colors?.primary_color || colors?.secondary_color || colors?.tertiary_color || (a as any).icon);
 			});
 	};
 
 	const color = () => role()?.color ?? null;
+	const roleColors = () => {
+		const colors = (role() as any)?.colors;
+		return [colors?.primary_color, colors?.secondary_color, colors?.tertiary_color]
+			.filter((value): value is number => typeof value === "number")
+			.map((value) => `rgb(${decimal2rgb(value, true)})`);
+	};
+	const roleIcon = () => (role() as any)?.icon as string | null | undefined;
+	const roleStyle = () => {
+		const colors = roleColors();
+		if (colors.length > 1) return { background: `linear-gradient(90deg, ${colors.join(", ")})`, "-webkit-background-clip": "text", color: "transparent" };
+		return props.color && color() ? { color: `rgb(${decimal2rgb(color()!, true)})` } : undefined;
+	};
 
 	const children = () => nick() ?? <UserLabelRelationshipNickname $={props.$} />;
 	const prefix = props.prefix ?? "";
@@ -40,11 +81,16 @@ function UserLabelNicknameProfile(props: {
 			}
 		>
 			<span
-				style={
-					props.color ? { color: (color() && `rgb(${decimal2rgb(color()!, true)})`) || undefined } : undefined
-				}
+				style={roleStyle()}
 			>
 				{prefix}
+				<Show when={roleIcon()}>
+					<img
+						class={userLabelStyles.roleIcon}
+						src={`https://cdn.discordapp.com/role-icons/${role()!.id}/${roleIcon()}.png?size=16`}
+						alt=""
+					/>
+				</Show>
 				{children()}
 			</span>
 		</Show>
@@ -108,6 +154,7 @@ export default function UserLabel(props: {
 	guild?: DiscordGuild | null;
 	prefix?: string;
 	color?: boolean;
+	serverTag?: boolean;
 }) {
 	return (
 		<Show when={props.$} fallback={"Error"}>
@@ -126,6 +173,9 @@ export default function UserLabel(props: {
 						color={props.color ?? false}
 					/>
 				</Show>
+			</Show>
+			<Show when={props.serverTag !== false}>
+				<UserLabelServerTag $={props.$} />
 			</Show>
 		</Show>
 	);

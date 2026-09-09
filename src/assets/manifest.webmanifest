@@ -1,9 +1,8 @@
 {
-	"id": "korikord",
-	"name": "Kori",
-	"short_name": "Kori",
+	"id": "discord-sv",
+	"name": "Discord",
+	"short_name": "Discord",
 	"description": "Unofficial Discord Client for KaiOS.",
-
 	"start_url": "/index.html",
 	"orientation": "natural",
 	"dir": "auto",
@@ -33,7 +32,7 @@
 
 	"b2g_features": {
 		"display": "Kori",
-		"version": "3.2.2",
+		"version": "3.2.3",
 		"type": "privileged",
 		"default_locale": "en-US",
 		"developer": {

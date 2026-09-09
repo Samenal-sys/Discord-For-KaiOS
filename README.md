@@ -1,22 +1,7 @@
-# Kori
-
-Sveltecord is now on a different branch :)
-
-[![Discord server](https://invidget.switchblade.xyz/W9DF2q3Vv2)](https://discord.gg/W9DF2q3Vv2)
+# Discord for KaiOS (U-Edition)
+Discord for KaiOS upgraded Edition is a discord client for KaiOS with as many features as possible, if you ever notice a missing feature please reach on discord
 
 
-### Build Instructions
 
-Dependencies:
-- Bun **(Ensure your installation is up to date!)**
-- Git
-
-```
-git clone --recursive https://github.com/cyan-2048/Discord4KaiOS.git
-
-cd Discord4KaiOS
-
-bun i
-
-bun run build
-```
+# AI Code usage?
+AI Code is used for the changes made in this fork

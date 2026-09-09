@@ -8,6 +8,26 @@ interface AvatarProps {
 	size?: number;
 }
 
+function AvatarDecoration(props: AvatarProps & { src: string }) {
+	const size = props.size ?? 32;
+	const decoration = useStore(() => props.$, "avatar_decoration_data");
+
+	return (
+		<span style={{ position: "relative", display: "inline-block", width: `${size}px`, height: `${size}px` }}>
+			<img src={props.src} width={size} height={size} />
+			<Show when={decoration()?.asset}>
+				<img
+					style={{ position: "absolute", inset: "0", width: `${size}px`, height: `${size}px` }}
+					src={`https://cdn.discordapp.com/avatar-decoration-presets/${decoration()!.asset}.png?size=${size}`}
+					width={size}
+					height={size}
+					alt=""
+				/>
+			</Show>
+		</span>
+	);
+}
+
 function UserAvatarDefault(props: AvatarProps) {
 	const defaultAvatar = DEFAULT_AVATARS[convertSnowflakeToDate(props.$.id).getTime() % DEFAULT_AVATARS.length];
 
@@ -23,7 +43,11 @@ function UserAvatarGlobal(props: AvatarProps) {
 
 	return (
 		<Show when={avatar()} fallback={<UserAvatarDefault $={props.$} size={props.size} />}>
-			<img src={`https://cdn.discordapp.com/avatars/${props.$.id}/${avatar()}.png?size=${props.size ?? 32}`} />
+			<AvatarDecoration
+				$={props.$}
+				size={props.size}
+				src={`https://cdn.discordapp.com/avatars/${props.$.id}/${avatar()}.png?size=${props.size ?? 32}`}
+			/>
 		</Show>
 	);
 }
@@ -34,7 +58,9 @@ function UserAvatarProfile(props: AvatarProps & { profile: DiscordServerProfile 
 	// may or may not work, who knows
 	return (
 		<Show when={avatar()} fallback={<UserAvatarGlobal $={props.$} size={props.size} />}>
-			<img
+			<AvatarDecoration
+				$={props.$}
+				size={props.size}
 				src={`https://cdn.discordapp.com/guilds/${props.profile.$guild.id}/users/${
 					props.$.id
 				}/avatars/${avatar()}.png?size=${props.size ?? 32}`}

@@ -39,6 +39,7 @@ import { OptionsMenu } from "./components/OptionsMenu";
 import type { SkinVariation } from "./components/EmojiPicker";
 import { DiscordUser } from "discord";
 import UserAvatar from "./components/UserAvatar";
+import { getStoredAccounts } from "./Loading";
 
 const focusable = true;
 
@@ -202,6 +203,34 @@ export default function Settings(props: { onClose: () => void }) {
 						}}
 					/>
 					<div class={styles.buttons}>
+						<Button
+							onClick={async () => {
+								const accounts = await getStoredAccounts();
+								if (!accounts.length) return;
+								const currentToken = await localforage.getItem<string>("token");
+								const choices = accounts.map((account, index) => ({
+									id: index,
+									text: account.user?.global_name || account.user?.username || `Account ${index + 1}`,
+								}));
+								const actEl = document.activeElement as HTMLElement;
+								const close = slide(() => (
+									<OptionsMenu
+										onSelect={async (index) => {
+											await close?.();
+											if (index !== null && accounts[index as number]?.token !== currentToken) {
+												await localforage.setItem("token", accounts[index as number].token);
+												location.reload();
+												return;
+											}
+											actEl.focus();
+									}}
+									items={choices}
+								/>
+								));
+							}}
+						>
+							Switch Account
+						</Button>
 						<Button
 							onClick={async () => {
 								const actEl = document.activeElement as HTMLElement;

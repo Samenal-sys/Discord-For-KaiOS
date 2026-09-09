@@ -277,7 +277,7 @@ function ChannelTypingIndicatorWithChannel(props: { channel: DiscordTextChannel 
 						{(a, i) => (
 							<>
 								<span class={styles.user}>
-									<UserLabel $={a} nickname guild={currentDiscordGuild()} />
+									<UserLabel $={a} nickname guild={currentDiscordGuild()} serverTag={false} />
 								</span>
 								<Show when={i() < typingState().length - 2} fallback={<Show when={typingState().length > 1 && i() == typingState().length - 2}>{" and "}</Show>}>
 									{", "}
@@ -933,7 +933,9 @@ function MessageBoxGuild(props: { $: DiscordGuildTextChannel }) {
 function MessageBoxNullCheck() {
 	return (
 		<Show when={currentDiscordChannel()}>
-			<MessageBoxGuild $={currentDiscordChannel() as DiscordGuildTextChannel} />
+			<Show when={currentDiscordChannel()!.type !== 15}>
+				<MessageBoxGuild $={currentDiscordChannel() as DiscordGuildTextChannel} />
+			</Show>
 		</Show>
 	);
 }
@@ -2245,10 +2247,89 @@ function MessageList(props: { channel: ValidChannel }) {
 	);
 }
 
+function ForumThreadPicker(props: { channel: DiscordGuildTextChannel }) {
+	const [threads, setThreads] = createSignal<any[]>([]);
+	const [tagFilter, setTagFilter] = createSignal<string | null>(null);
+	const [loading, setLoading] = createSignal(true);
+	const tags = () => ((props.channel.value as any).available_tags || []) as any[];
+
+	onMount(async () => {
+		try {
+			const response = await props.channel.getForumThreads().response();
+			response.threads.forEach((thread) => props.channel.guild.handleChannels(thread as any));
+			setThreads(response.threads);
+		} catch (error) {
+			console.error("Failed to load forum threads", error);
+		} finally {
+			setLoading(false);
+		}
+	});
+
+	const visibleThreads = () =>
+		threads().filter((thread) => {
+			const filter = tagFilter();
+			return !filter || (thread.applied_tags || []).includes(filter);
+		});
+
+	return (
+		<div class={styles.forumPicker}>
+			<div class={styles.forumHeader}>Forum threads</div>
+			<Show when={tags().length > 0}>
+				<div
+					class={`${styles.forumFilter} focusable`}
+					tabIndex={-1}
+					on:sn-enter-down={() => {
+						const close = toolshed(() => (
+							<OptionsMenu
+								onSelect={async (id) => {
+									await close?.();
+									setTagFilter(id === null || id === "all" ? null : String(id));
+								}}
+								items={[{ id: "all", text: "All tags" }].concat(
+									tags().map((tag) => ({ id: tag.id, text: tag.name }))
+								)}
+							/>
+						));
+					}}
+				>
+					Filter: {tags().find((tag) => tag.id === tagFilter())?.name || "All tags"}
+				</div>
+			</Show>
+			<Show when={!loading()} fallback={<div class={styles.forumEmpty}>Loading threads...</div>}>
+				<Show when={visibleThreads().length > 0} fallback={<div class={styles.forumEmpty}>No active threads.</div>}>
+					<For each={visibleThreads()}>
+						{(thread) => (
+							<div
+								class={`${styles.forumThread} focusable`}
+								tabIndex={-1}
+								on:sn-enter-down={async () => {
+									const selected = props.channel.guild.channels.get(thread.id);
+									if (!selected) return;
+									setCurrentDiscordChannel(selected as any);
+									await sleep(0);
+									focusMessages();
+								}}
+							>
+								<div class={styles.forumThreadName}>{thread.name || "Untitled thread"}</div>
+								<div class={styles.forumThreadMeta}>{thread.message_count || 0} messages</div>
+							</div>
+						)}
+					</For>
+				</Show>
+			</Show>
+		</div>
+	);
+}
+
 function MessageListNullCheck() {
 	return (
 		<Show when={currentDiscordChannel() && "getMessages" in currentDiscordChannel()!}>
-			<MessageList channel={currentDiscordChannel()!} />
+			<Show
+				when={currentDiscordChannel()!.type === 15}
+				fallback={<MessageList channel={currentDiscordChannel()!} />}
+			>
+				<ForumThreadPicker channel={currentDiscordChannel() as DiscordGuildTextChannel} />
+			</Show>
 		</Show>
 	);
 }

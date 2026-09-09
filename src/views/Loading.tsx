@@ -9,6 +9,26 @@ import { Match, Switch, createSignal, onMount, onCleanup } from "solid-js";
 
 interface LoadingProps {}
 
+export interface StoredAccount {
+	token: string;
+	user?: {
+		id: string;
+		username: string;
+		global_name?: string | null;
+		avatar?: string | null;
+	};
+}
+
+export async function getStoredAccounts(): Promise<StoredAccount[]> {
+	return (await localforage.getItem<StoredAccount[]>("accounts")) || [];
+}
+
+async function rememberAccount(token: string, user: StoredAccount["user"]) {
+	const accounts = await getStoredAccounts();
+	const filtered = accounts.filter((account) => account.token !== token);
+	await localforage.setItem("accounts", [{ token, user }, ...filtered]);
+}
+
 const enum LoadingState {
 	Loading,
 	LoginRequired,
@@ -30,6 +50,12 @@ export async function login(email: string, password: string, token: string): Pro
 
 		localStorage.setItem("read_states", JSON.stringify(client.ready.read_state.entries));
 		await localforage.setItem("token", _result.config.token);
+		await rememberAccount(_result.config.token, {
+			id: client.ready.user.id,
+			username: client.ready.user.username,
+			global_name: client.ready.user.global_name,
+			avatar: client.ready.user.avatar,
+		});
 
 		cb?.(client);
 

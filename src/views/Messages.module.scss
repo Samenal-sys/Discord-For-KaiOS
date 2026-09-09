@@ -248,6 +248,47 @@
 	}
 }
 
+.forumPicker {
+	width: 100vw;
+	padding: 8px;
+	box-sizing: border-box;
+	background: #2c2f32;
+
+	:global(.light) & {
+		background: #f8faf9;
+	}
+}
+
+.forumHeader {
+	font-weight: 700;
+	margin-bottom: 6px;
+}
+
+.forumFilter,
+.forumThread {
+	padding: 7px 8px;
+	margin: 3px 0;
+	background: #383a40;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+
+	:global(.light) & {
+		background: #e3e5e8;
+	}
+}
+
+.forumThreadName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.forumThreadMeta,
+.forumEmpty {
+	color: #878d96;
+	font-size: 10px;
+}
+
 .MessageBox,
 .noPerm {
 	flex-shrink: 0;
