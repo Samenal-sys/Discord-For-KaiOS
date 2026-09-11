@@ -1083,6 +1083,15 @@ interface DiscordGuildTextChannelProps extends DiscordTextChannelProps {
 	 * ID of the parent channel for a thread
 	 */
 	parent_id?: Snowflake | null;
+	available_tags?: Array<{
+		id: Snowflake;
+		name: string;
+		moderated: boolean;
+		emoji_id?: Snowflake | null;
+		emoji_name?: string | null;
+	}>;
+	default_sort_order?: number | null;
+	default_forum_layout?: number;
 }
 
 type GuildTextChannelType = Exclude<TextChannelType, ChannelType.DM | ChannelType.GroupDM>;
@@ -1114,9 +1123,78 @@ export class DiscordGuildTextChannel<
 		return this.guild.parseRoleAccess(this.value.permission_overwrites);
 	}
 
-	getForumThreads() {
-		return this.Request.get<{ threads: any[] }>(`channels/${this.id}/threads/active`, {});
+	getActiveThreads() {
+		return this.Request.get<ThreadListResponse>(`channels/${this.id}/threads/active`, {});
 	}
+
+	getForumThreads() {
+		return this.getActiveThreads();
+	}
+
+	getArchivedPublicThreads(before?: string) {
+		return this.Request.get<ThreadListResponse>(`channels/${this.id}/threads/archived/public`, {
+			search: { before },
+		});
+	}
+
+	getArchivedPrivateThreads(before?: string) {
+		return this.Request.get<ThreadListResponse>(`channels/${this.id}/threads/archived/private`, {
+			search: { before },
+		});
+	}
+
+	createThread(name: string, options: { auto_archive_duration?: number; type?: 10 | 11 | 12; invitable?: boolean; rate_limit_per_user?: number } = {}) {
+		return this.Request.post(`channels/${this.id}/threads`, {
+			data: {
+				name,
+				auto_archive_duration: options.auto_archive_duration,
+				type: options.type,
+				invitable: options.invitable,
+				rate_limit_per_user: options.rate_limit_per_user,
+			},
+		});
+	}
+
+	createThreadFromMessage(messageID: string, name: string, options: { auto_archive_duration?: number; type?: 11 | 12; rate_limit_per_user?: number } = {}) {
+		return this.Request.post(`channels/${this.id}/messages/${messageID}/threads`, {
+			data: {
+				name,
+				auto_archive_duration: options.auto_archive_duration,
+				type: options.type,
+				rate_limit_per_user: options.rate_limit_per_user,
+			},
+		});
+	}
+
+	createForumPost(name: string, content: string, options: { applied_tags?: string[]; auto_archive_duration?: number; rate_limit_per_user?: number } = {}) {
+		return this.Request.post(`channels/${this.id}/threads`, {
+			data: {
+				name,
+				auto_archive_duration: options.auto_archive_duration,
+				rate_limit_per_user: options.rate_limit_per_user,
+				applied_tags: options.applied_tags,
+				message: { content },
+			},
+		});
+	}
+
+	setArchived(archived: boolean) {
+		return this.Request.patch(`channels/${this.id}`, { data: { archived } });
+	}
+
+	joinThread() {
+		return this.Request.put(`channels/${this.id}/thread-members/@me`, {});
+	}
+
+	leaveThread() {
+		return this.Request.delete(`channels/${this.id}/thread-members/@me`, {});
+	}
+}
+
+export interface ThreadListResponse {
+	threads: any[];
+	members?: any[];
+	has_more?: boolean;
 }
 
 export class DiscordDirectMessage<

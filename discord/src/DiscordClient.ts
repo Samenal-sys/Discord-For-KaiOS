@@ -622,6 +622,7 @@ export class DiscordClientReady {
 
 			// nothing should go wrong, right??
 			guild.handleChannels(...(_guild.channels as ClientChannel[]));
+			guild.handleChannels(...((_guild.threads || []) as ClientChannel[]));
 
 			this.guilds.add(_guild.id, guild);
 

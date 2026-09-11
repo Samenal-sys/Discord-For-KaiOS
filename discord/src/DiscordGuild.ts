@@ -323,12 +323,15 @@ export class DiscordGuild extends WritableStore<
 							name: a.name,
 							last_pin_timestamp: a.last_pin_timestamp,
 							last_message_id: a.last_message_id,
-							position: a.position,
-							permission_overwrites: a.permission_overwrites!,
-							nsfw: a.nsfw!,
+							position: a.position ?? 0,
+							permission_overwrites: a.permission_overwrites || [],
+							nsfw: a.nsfw ?? false,
 							parent_id: a.parent_id,
 							topic: a.topic,
 							rate_limit_per_user: a.rate_limit_per_user,
+							available_tags: (a as any).available_tags,
+							default_sort_order: (a as any).default_sort_order,
+							default_forum_layout: (a as any).default_forum_layout,
 						});
 
 						// this looks gross lmao

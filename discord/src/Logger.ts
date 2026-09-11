@@ -2,6 +2,7 @@
 import prune from "json-prune";
 
 interface Log {
+	time: string;
 	type: string;
 	args: any[];
 	name: string;
@@ -19,6 +20,21 @@ export default class Logger {
 	static logToFile = false;
 	static disabledNames: string[] = [];
 	static disabled = false;
+	static storageKey = "kori-logs";
+	static maxLogs = 300;
+
+	static read(): Log[] {
+		try {
+			return JSON.parse(localStorage.getItem(Logger.storageKey) || "[]");
+		} catch {
+			return [];
+		}
+	}
+
+	static clear() {
+		Logger.file = [];
+		localStorage.removeItem(Logger.storageKey);
+	}
 
 	constructor(public name: string, public color: string = "#3E82E5") {}
 
@@ -61,21 +77,28 @@ export default class Logger {
 	}
 
 	private _log(type: consoleTypes, ...args: any[]) {
-		return () => {};
-		// if (Logger.disabled || Logger.disabledNames.includes(this.name)) return () => {};
-		//
-		// const binded = Function.prototype.bind.call(
-		// 	console[type],
-		// 	console,
-		// 	`%c[${this.name}]%c`,
-		// 	`color: ${this.color}; font-weight: 700;`,
-		// 	"",
-		// 	...args
-		// );
-		//
-		// // Logger.fileLog(this.name, String(type), args, new Error().stack);
-		//
-		// return binded;
+		if (Logger.disabled || Logger.disabledNames.includes(this.name)) return () => {};
+
+		const safeArgs = args.map((arg) => {
+			try {
+				JSON.stringify(arg);
+				return arg;
+			} catch {
+				return String(arg);
+			}
+		});
+		const entry: Log = { time: new Date().toISOString(), name: this.name, type: String(type), args: safeArgs };
+		Logger.file.push(entry);
+		Logger.file = Logger.file.slice(-Logger.maxLogs);
+		try {
+			localStorage.setItem(Logger.storageKey, JSON.stringify(Logger.file));
+		} catch {}
+
+		return () => {
+			try {
+				(console[type] as (...values: any[]) => void)(`[${this.name}]`, ...args);
+			} catch {}
+		};
 	}
 
 	// static fileLog(name: string, type: string, args: any[], stack?: string) {

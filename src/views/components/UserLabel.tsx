@@ -36,6 +36,7 @@ function UserLabelNicknameProfile(props: {
 	profile: DiscordServerProfile;
 	prefix?: string;
 	color?: boolean;
+	roleIcon?: boolean;
 }) {
 	const nick = useStore(() => props.profile, "nick");
 	const roles = useStore(() => props.profile, "roles");
@@ -46,7 +47,8 @@ function UserLabelNicknameProfile(props: {
 		const _roles = roles();
 
 		return guild_roles()
-			.toSorted((a, b) => b.position - a.position)
+			.slice()
+			.sort((a, b) => b.position - a.position)
 			.find((a) => {
 				const colors = (a as any).colors;
 				return _roles.includes(a.id) && (a.color !== 0 || colors?.primary_color || colors?.secondary_color || colors?.tertiary_color || (a as any).icon);
@@ -62,6 +64,7 @@ function UserLabelNicknameProfile(props: {
 	};
 	const roleIcon = () => (role() as any)?.icon as string | null | undefined;
 	const roleStyle = () => {
+		if (!props.color) return undefined;
 		const colors = roleColors();
 		if (colors.length > 1) return { background: `linear-gradient(90deg, ${colors.join(", ")})`, "-webkit-background-clip": "text", color: "transparent" };
 		return props.color && color() ? { color: `rgb(${decimal2rgb(color()!, true)})` } : undefined;
@@ -71,29 +74,17 @@ function UserLabelNicknameProfile(props: {
 	const prefix = props.prefix ?? "";
 
 	return (
-		<Show
-			when={color()}
-			fallback={
-				<>
-					{prefix}
-					{children()}
-				</>
-			}
-		>
-			<span
-				style={roleStyle()}
-			>
-				{prefix}
-				<Show when={roleIcon()}>
-					<img
-						class={userLabelStyles.roleIcon}
-						src={`https://cdn.discordapp.com/role-icons/${role()!.id}/${roleIcon()}.png?size=16`}
-						alt=""
-					/>
-				</Show>
-				{children()}
-			</span>
-		</Show>
+		<span style={roleStyle()}>
+			{prefix}
+			{children()}
+			<Show when={props.roleIcon !== false && roleIcon()}>
+				<img
+					class={userLabelStyles.roleIcon}
+					src={`https://cdn.discordapp.com/role-icons/${role()!.id}/${roleIcon()}.png?size=16`}
+					alt=""
+				/>
+			</Show>
+		</span>
 	);
 }
 
@@ -102,6 +93,7 @@ function UserLabelNicknameGuild(props: {
 	guild: DiscordGuild;
 	prefix?: string;
 	color: boolean;
+	roleIcon?: boolean;
 }) {
 	let profile = props.$.profiles.get(props.guild.id);
 
@@ -155,6 +147,7 @@ export default function UserLabel(props: {
 	prefix?: string;
 	color?: boolean;
 	serverTag?: boolean;
+	roleIcon?: boolean;
 }) {
 	return (
 		<Show when={props.$} fallback={"Error"}>
@@ -171,6 +164,7 @@ export default function UserLabel(props: {
 						$={props.$}
 						guild={props.guild!}
 						color={props.color ?? false}
+						roleIcon={props.roleIcon}
 					/>
 				</Show>
 			</Show>

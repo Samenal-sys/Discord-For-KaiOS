@@ -118,6 +118,37 @@
 	margin-bottom: 4px;
 }
 
+.logs {
+	height: calc(100vh - 28px);
+	overflow: auto;
+}
+
+.logActions {
+	display: flex;
+	gap: 4px;
+	padding: 4px;
+}
+
+.logEntry {
+	padding: 5px 6px;
+	border-bottom: 1px solid #3f4248;
+	font-size: 11px;
+	word-break: break-word;
+
+	:global(.light) & {
+		border-color: #d7d8dd;
+	}
+}
+
+.logMeta {
+	color: #949ba4;
+	font-size: 10px;
+}
+
+.logText {
+	margin-top: 2px;
+}
+
 .content {
 	padding: 4px 6px;
 	font-size: 14px;

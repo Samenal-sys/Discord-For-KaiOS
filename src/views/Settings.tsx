@@ -19,6 +19,7 @@ import {
 import { useKeypress } from "@/lib/utils";
 import SpatialNavigation from "@/lib/spatial_navigation";
 import {
+	For,
 	JSXElement,
 	Match,
 	Show,
@@ -40,6 +41,7 @@ import type { SkinVariation } from "./components/EmojiPicker";
 import { DiscordUser } from "discord";
 import UserAvatar from "./components/UserAvatar";
 import { getStoredAccounts } from "./Loading";
+import Logger from "discord/src/Logger";
 
 const focusable = true;
 
@@ -107,6 +109,39 @@ const SN_ID = "settings";
 const enum Page {
 	Settings,
 	About,
+	Logs,
+}
+
+function Logs() {
+	const [logs, setLogs] = createSignal(Logger.read());
+
+	return (
+		<div class={styles.logs}>
+			<div class={styles.logActions}>
+				<Button onClick={() => setLogs(Logger.read())}>Refresh</Button>
+				<Button
+					onClick={() => {
+						Logger.clear();
+						setLogs([]);
+					}}
+				>
+					Clear
+				</Button>
+			</div>
+			<Show when={logs().length} fallback={<div class={styles.content}>No saved logs.</div>}>
+				<For each={logs().slice().reverse()}>
+					{(log) => (
+						<div class={styles.logEntry}>
+							<div class={styles.logMeta}>
+								{new Date(log.time).toLocaleTimeString()} [{log.type}] {log.name}
+							</div>
+							<div class={styles.logText}>{log.args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" ")}</div>
+						</div>
+					)}
+				</For>
+			</Show>
+		</div>
+	);
 }
 
 export default function Settings(props: { onClose: () => void }) {
@@ -163,6 +198,7 @@ export default function Settings(props: { onClose: () => void }) {
 				<Switch>
 					<Match when={page() == Page.Settings}>Settings</Match>
 					<Match when={page() == Page.About}>Discord4KaiOS</Match>
+					<Match when={page() == Page.Logs}>Logs</Match>
 				</Switch>
 			</div>
 			<Switch>
@@ -203,6 +239,7 @@ export default function Settings(props: { onClose: () => void }) {
 						}}
 					/>
 					<div class={styles.buttons}>
+						<Button onClick={() => setPage(Page.Logs)}>View Logs</Button>
 						<Button
 							onClick={async () => {
 								const accounts = await getStoredAccounts();
@@ -308,6 +345,9 @@ export default function Settings(props: { onClose: () => void }) {
 				</Match>
 				<Match when={page() == Page.About}>
 					<About />
+				</Match>
+				<Match when={page() == Page.Logs}>
+					<Logs />
 				</Match>
 			</Switch>
 		</div>

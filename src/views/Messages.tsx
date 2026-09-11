@@ -40,7 +40,7 @@ const EmojiIcon = () => (
 	</svg>
 );
 
-import { centerScroll, decimal2rgb, isInViewport, isKeypressPaused, isPartiallyInViewport, sleep, typeInTextarea, useKeypress, useStore } from "@/lib/utils";
+import { centerScroll, decimal2rgb, isInViewport, isKeypressPaused, isPartiallyInViewport, sleep, typeInTextarea, useStore } from "@/lib/utils";
 import UserLabel from "./components/UserLabel";
 import SpatialNavigation from "@/lib/spatial_navigation";
 import dayjs from "dayjs";
@@ -72,7 +72,7 @@ function toCodePoint(unicodeSurrogates: string, sep?: any) {
 import { Dynamic } from "solid-js/web";
 import ReplyBadge from "./components/ReplyBadge";
 import UserAvatar from "./components/UserAvatar";
-import MessageEmbeds, { FocusableLink, makeContentFocusable } from "./components/MessageEmbeds";
+import MessageEmbeds, { FocusableLink } from "./components/MessageEmbeds";
 import Button from "./components/Button";
 import debounce from "lodash-es/debounce";
 import { toolshed } from "./modals/toolshed";
@@ -277,7 +277,7 @@ function ChannelTypingIndicatorWithChannel(props: { channel: DiscordTextChannel 
 						{(a, i) => (
 							<>
 								<span class={styles.user}>
-									<UserLabel $={a} nickname guild={currentDiscordGuild()} serverTag={false} />
+									<UserLabel $={a} nickname guild={currentDiscordGuild()} serverTag={false} roleIcon={false} color={false} />
 								</span>
 								<Show when={i() < typingState().length - 2} fallback={<Show when={typingState().length > 1 && i() == typingState().length - 2}>{" and "}</Show>}>
 									{", "}
@@ -998,7 +998,7 @@ function ReplyDescriptionText(props: {
 		<>
 			<div class={styles.text}>
 				<span class={styles.label}>
-					<UserLabel color prefix="@" $={props.$.author} nickname guild={currentDiscordGuild()} />
+					<UserLabel color prefix="@" $={props.$.author} nickname guild={currentDiscordGuild()} roleIcon={false} />
 				</span>
 				{firstAttachement()?.waveform ? "🎙️ " + toHHMMSS(firstAttachement().duration_secs!) : ""}
 				<Markdown text={(content() || "").slice(0, 150)} inline renderer={renderer} />
@@ -1065,7 +1065,7 @@ function MessageSeparator(props: { $: DiscordMessageType }) {
 					<ReplyBadge class={styles.badge} />
 					<div class={styles.text}>
 						<span class={styles.label}>
-							<Show when={user_interaction()}>{(user_interaction) => <UserLabel color prefix="@" $={user_interaction()} nickname guild={currentDiscordGuild()} />}</Show>
+							<Show when={user_interaction()}>{(user_interaction) => <UserLabel color prefix="@" $={user_interaction()} nickname guild={currentDiscordGuild()} roleIcon={false} />}</Show>
 						</span>
 						used <a>/{interaction()!.name}</a>
 					</div>
@@ -1513,24 +1513,6 @@ function Message(props: {
 	// TODO: Copy sveltecord navigation
 
 	const [focused, setFocused] = createSignal(false);
-	const [innerFocus, setInnerFocus] = createSignal(false);
-
-	// TODO: INNER FOCUS
-	useKeypress("5", async () => {
-		if (untrack(focused) && untrack(currentView) == Views.MESSAGES) {
-			// let's return early
-			if (!divRef.querySelector(".v-image, .focusable-attachment")) return;
-
-			divRef.blur();
-			setInnerFocus(true);
-			await sleep(0);
-			makeContentFocusable(async () => {
-				setInnerFocus(false);
-				await sleep(0);
-				divRef.focus({ preventScroll: true });
-			}, props.$.id);
-		}
-	});
 
 	onMount(async () => {
 		if (!props.last) return;
@@ -1598,7 +1580,6 @@ function Message(props: {
 				tabIndex={-1}
 				classList={{
 					[styles.Message]: true,
-					"msg-focused": innerFocus(),
 					focusable: true,
 					last: props.last,
 					[styles.mentioned]: props.$.wouldPing(false),
@@ -2249,13 +2230,16 @@ function MessageList(props: { channel: ValidChannel }) {
 
 function ForumThreadPicker(props: { channel: DiscordGuildTextChannel }) {
 	const [threads, setThreads] = createSignal<any[]>([]);
-	const [tagFilter, setTagFilter] = createSignal<string | null>(null);
 	const [loading, setLoading] = createSignal(true);
-	const tags = () => ((props.channel.value as any).available_tags || []) as any[];
+	const [showArchived, setShowArchived] = createSignal(false);
+	const [search, setSearch] = createSignal("");
 
-	onMount(async () => {
+	async function loadThreads() {
+		setLoading(true);
 		try {
-			const response = await props.channel.getForumThreads().response();
+			const response = await (showArchived()
+				? props.channel.getArchivedPublicThreads().response()
+				: props.channel.getActiveThreads().response());
 			response.threads.forEach((thread) => props.channel.guild.handleChannels(thread as any));
 			setThreads(response.threads);
 		} catch (error) {
@@ -2263,55 +2247,97 @@ function ForumThreadPicker(props: { channel: DiscordGuildTextChannel }) {
 		} finally {
 			setLoading(false);
 		}
-	});
+	}
+
+	onMount(loadThreads);
+
+	async function createTopic() {
+		const name = prompt("Topic name");
+		if (!name?.trim()) return;
+		const content = prompt("First message") || "";
+		try {
+			await props.channel.createForumPost(name.trim(), content).response();
+			setShowArchived(false);
+			await loadThreads();
+		} catch {
+			toast("Unable to create topic");
+		}
+	}
 
 	const visibleThreads = () =>
 		threads().filter((thread) => {
-			const filter = tagFilter();
-			return !filter || (thread.applied_tags || []).includes(filter);
+			const query = search().trim().toLowerCase();
+			return !query || thread.name?.toLowerCase().includes(query);
 		});
 
 	return (
-		<div class={styles.forumPicker}>
-			<div class={styles.forumHeader}>Forum threads</div>
-			<Show when={tags().length > 0}>
-				<div
-					class={`${styles.forumFilter} focusable`}
-					tabIndex={-1}
-					on:sn-enter-down={() => {
-						const close = toolshed(() => (
-							<OptionsMenu
-								onSelect={async (id) => {
-									await close?.();
-									setTagFilter(id === null || id === "all" ? null : String(id));
-								}}
-								items={[{ id: "all", text: "All tags" }].concat(
-									tags().map((tag) => ({ id: tag.id, text: tag.name }))
-								)}
-							/>
-						));
-					}}
-				>
-					Filter: {tags().find((tag) => tag.id === tagFilter())?.name || "All tags"}
-				</div>
-			</Show>
+		<div
+			class={styles.forumPicker}
+			onKeyDown={(event) => {
+				if (event.key === "SoftLeft") {
+					event.preventDefault();
+					setSearch(prompt("Search topics", search()) || "");
+				}
+				if (event.key === "SoftRight") {
+					event.preventDefault();
+					createTopic();
+				}
+			}}
+		>
+			<div class={styles.forumHeader}>Topics</div>
 			<Show when={!loading()} fallback={<div class={styles.forumEmpty}>Loading threads...</div>}>
-				<Show when={visibleThreads().length > 0} fallback={<div class={styles.forumEmpty}>No active threads.</div>}>
+				<Show when={visibleThreads().length > 0} fallback={<div class={styles.forumEmpty}>{search() ? "No matching topics." : "No active topics."}</div>}>
 					<For each={visibleThreads()}>
 						{(thread) => (
 							<div
 								class={`${styles.forumThread} focusable`}
 								tabIndex={-1}
+								onKeyDown={(event) => {
+									if (event.key !== "SoftRight") return;
+									event.preventDefault();
+									const topic = props.channel.guild.channels.get(thread.id) as DiscordGuildTextChannel | undefined;
+									if (!topic) return;
+									const close = toolshed(() => (
+										<OptionsMenu
+											onSelect={async (action) => {
+												await close?.();
+												try {
+													if (action === "join") await topic.joinThread().response();
+													if (action === "leave") await topic.leaveThread().response();
+													if (action === "archive" || action === "unarchive") await topic.setArchived(action === "archive").response();
+													await loadThreads();
+												} catch {
+													toast("Unable to update topic");
+												}
+											}}
+											items={[
+												{ id: showArchived() ? "unarchive" : "archive", text: showArchived() ? "Unarchive topic" : "Archive topic" },
+												{ id: "join", text: "Join topic" },
+												{ id: "leave", text: "Leave topic" },
+											]}
+										/>
+									));
+								}}
 								on:sn-enter-down={async () => {
-									const selected = props.channel.guild.channels.get(thread.id);
+									let selected = props.channel.guild.channels.get(thread.id);
+									if (!selected) {
+										props.channel.guild.handleChannels(thread as any);
+										selected = props.channel.guild.channels.get(thread.id);
+									}
 									if (!selected) return;
 									setCurrentDiscordChannel(selected as any);
 									await sleep(0);
 									focusMessages();
 								}}
 							>
-								<div class={styles.forumThreadName}>{thread.name || "Untitled thread"}</div>
-								<div class={styles.forumThreadMeta}>{thread.message_count || 0} messages</div>
+								<div class={styles.forumThreadBody}>
+									<div class={styles.forumThreadName}>{thread.name || "Untitled topic"}</div>
+									<div class={styles.forumThreadMeta}>
+										{thread.message_count || 0} messages
+										{thread.thread_metadata?.locked ? " | Locked" : ""}
+										{thread.thread_metadata?.archived ? " | Archived" : ""}
+									</div>
+								</div>
 							</div>
 						)}
 					</For>
