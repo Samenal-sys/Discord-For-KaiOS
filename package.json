@@ -8,6 +8,7 @@
 		"build": "bun run --bun vite build",
 		"dev:v3": "KAIOS=3 bun run dev",
 		"build:v3": "KAIOS=3 bun run build",
+		"build:kord": "KAIOS=0 bun run build",
 		"kaistore": "bun run build && bun run build:v3",
 		"build:cloudphone": "KAIOS=3 CLOUDPHONE=1 bun run build",
 		"create-view": "bun ./scripts/create-view.ts",
